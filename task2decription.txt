@@ -1,0 +1,110 @@
+Stream-режим AI-агента
+Цель
+Доработать агента из предыдущего задания: заменить единовременный вызов .invoke() на потоковый вывод через .stream(), чтобы ответ появлялся в консоли по мере генерации, а не после полного завершения.
+
+Предыстория
+В предыдущем задании агент вызывался через .invoke() — он возвращал результат только после того, как полностью завершал работу. При длинных ответах или нескольких вызовах инструментов это выглядит как зависание.
+
+Stream-режим позволяет получать ответ токен за токеном прямо в процессе генерации — так же, как это работает в ChatGPT или любом другом чат-интерфейсе.
+
+Что нужно изменить
+1. Заменить .invoke() на .stream()
+Вместо:
+
+answer = agent.invoke({
+    "messages": [{"role": "human", "content": "..."}]
+})
+Написать:
+
+stream = agent.stream(
+    {
+        "messages": [{"role": "human", "content": "..."}]
+    },
+    stream_mode=['messages', 'updates']
+)
+stream_mode — список режимов стриминга. Можно передать один или оба:
+
+'messages' — каждый токен текста по мере генерации
+'updates' — события об изменениях состояния агента (вызов инструмента, завершение шага)
+2. Итерироваться по чанкам
+agent.stream() возвращает итератор. Каждый элемент — это кортеж (тип_чанка, данные_чанка):
+
+for chunk in stream:
+    chunk_type, chunk_data = chunk
+
+    if chunk_type == 'messages':
+        # потоковый токен текста
+        ...
+
+    if chunk_type == 'updates':
+        # событие об изменении состояния
+        ...
+3. Обработать чанки типа 'messages'
+Чанк типа 'messages' содержит кортеж (message, meta):
+
+message, meta = chunk_data
+message.content — фрагмент текста (может быть пустым — тогда это вызов инструмента)
+meta['langgraph_step'] — номер текущего шага агента (целое число)
+Задача: вывести message.content сразу, без перевода строки, чтобы текст "тёк" в консоль. Когда номер шага меняется — напечатать разделитель.
+
+Пример функции:
+
+step = 1
+
+def format_chunk_message(chunk):
+    message, meta = chunk
+    global step
+
+    if meta['langgraph_step'] != step:
+        step = meta['langgraph_step']
+        print('\n --- --- --- \n')
+
+    if message.content:
+        print(message.content, end='', flush=False)
+print(..., end='') — не добавляет перевод строки после вывода, поэтому токены склеиваются в слитный текст.
+
+4. Обработать чанки типа 'updates'
+Чанк типа 'updates' — это словарь с информацией о завершённых шагах. Нас интересует ключ 'model', который появляется, когда модель завершила шаг (например, решила вызвать инструмент):
+
+if chunk_type == 'updates':
+    if chunk_data.get('model', None):
+        last_message = chunk_data['model']['messages'][-1]
+        print(format_message(last_message))
+Функция format_message — та же, что использовалась для .invoke():
+
+def format_message(message) -> str:
+    if message.content:
+        return message.content
+    return f"{message.tool_calls[0]['name']}({message.tool_calls[0]['args']})"
+Итоговая структура скрипта
+[подключение к LLM]
+[определение инструмента с субагентом]
+[создание главного агента]
+
+stream = agent.stream(...)
+
+step = 1
+
+def format_chunk_message(chunk): ...
+def format_message(message): ...
+
+for chunk in stream:
+    chunk_type, chunk_data = chunk
+    if chunk_type == 'messages': ...
+    if chunk_type == 'updates': ...
+Ожидаемый результат
+В консоли текст появляется постепенно — сначала агент "думает вслух", затем видны вызовы инструментов, затем финальный ответ. Каждый новый шаг агента отделён разделителем:
+
+ --- --- --- 
+
+get_price({'product': 'молоко', 'city': 'Казань'})
+
+ --- --- --- 
+
+| Продукт | Цена (руб.) | Магазин    |
+| Молоко  | 89          | Магнит     |
+
+ --- --- --- 
+
+get_price({'product': 'хлеб', 'city': 'Казань'})
+...

@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:platform.brojs.ru)",
+      "Bash(python -m venv venv)",
+      "Bash(venv/Scripts/python.exe -m pip install --upgrade pip)",
+      "Bash(venv/Scripts/python.exe -m pip install langchain==1.2.10 langchain-openai==1.1.9)",
+      "Bash(venv/Scripts/python.exe shopping_agent.py)",
+      "Bash(py -0)",
+      "Bash(py -3.12 --version)",
+      "Bash(py -3.11 --version)",
+      "Bash(py -3.10 --version)",
+      "Bash(rm -rf venv)",
+      "Bash(py -3.13 -m venv venv)",
+      "Bash(venv/Scripts/python.exe --version)",
+      "Bash(venv/Scripts/python.exe -m pip install --quiet langchain==1.2.10 langchain-openai==1.1.9)",
+      "Bash(venv/Scripts/python.exe -m pip show langgraph langchain)",
+      "Bash(venv/Scripts/python.exe -m pip install --quiet --upgrade langgraph)",
+      "Bash(PYTHONIOENCODING=utf-8 venv/Scripts/python.exe shopping_agent.py)"
+    ]
+  }
+}
