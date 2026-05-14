@@ -1,0 +1,16 @@
+{
+  "default:user_name": {
+    "value": "Алексей Иванов",
+    "timestamp": "2026-05-14T17:14:32"
+  },
+  "agent_1:session_token": {
+    "value": "abc123xyz",
+    "timestamp": "2026-05-14T17:14:32"
+  },
+  "global_setting": {
+    "value": {
+      "theme": "dark"
+    },
+    "timestamp": "2026-05-14T17:14:32"
+  }
+}

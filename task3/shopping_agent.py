@@ -5,14 +5,19 @@
 #   - rich.Console для вывода;
 #   - ловлю __interrupt__ в стриме и спрашиваю подтверждение у юзера.
 
+import os
 import sys
+from pathlib import Path
 
+from dotenv import load_dotenv
 from langchain.agents import create_agent
 from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import MemorySaver
 from pydantic import SecretStr
 from rich.console import Console
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 # чтобы кириллица не ломалась в винде
 sys.stdout.reconfigure(encoding="utf-8")
@@ -22,10 +27,10 @@ console = Console()
 
 
 llm = ChatOpenAI(
-    model="qwen/qwen3-vl-4b",
-    base_url="http://localhost:1234/v1",
-    api_key=SecretStr("fake"),
-    temperature=0.7,
+    model=os.getenv("LLM_MODEL", "google/gemma-4-26b-a4b"),
+    base_url=os.getenv("LLM_BASE_URL", "http://192.168.0.120:1234/v1"),
+    api_key=SecretStr(os.getenv("LLM_API_KEY", "lm-studio")),
+    temperature=float(os.getenv("LLM_TEMPERATURE", "0.7")),
 )
 
 

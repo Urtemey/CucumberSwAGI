@@ -5,11 +5,15 @@
 import json
 import os
 import sys
+from pathlib import Path
 
+from dotenv import load_dotenv
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field, SecretStr
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 sys.stdout.reconfigure(encoding="utf-8")
 sys.stdin.reconfigure(encoding="utf-8")
@@ -39,9 +43,9 @@ class AssignmentCard(BaseModel):
 
 # модель: по умолчанию локальный LM Studio, можно переопределить env-ми
 llm = ChatOpenAI(
-    model=os.getenv("OPENAI_MODEL", "qwen/qwen3-vl-4b"),
-    base_url=os.getenv("OPENAI_BASE_URL", "http://localhost:1234/v1"),
-    api_key=SecretStr(os.getenv("OPENAI_API_KEY", "fake")),
+    model=os.getenv("LLM_MODEL", "google/gemma-4-26b-a4b"),
+    base_url=os.getenv("LLM_BASE_URL", "http://192.168.0.120:1234/v1"),
+    api_key=SecretStr(os.getenv("LLM_API_KEY", "lm-studio")),
     temperature=0,  # тут нам нужна предсказуемость, не творчество
 )
 

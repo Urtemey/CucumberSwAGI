@@ -2,11 +2,14 @@
 # Идея простая: 1) LLM пишет завязку и три варианта, 2) граф ставится
 # на паузу через interrupt, 3) после выбора пользователя LLM пишет концовку.
 
+import os
 import re
 import sys
+from pathlib import Path
 from typing import TypedDict
 
 import questionary
+from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.constants import START
@@ -14,15 +17,17 @@ from langgraph.graph import StateGraph
 from langgraph.types import Command, interrupt
 from pydantic import SecretStr
 
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
 sys.stdout.reconfigure(encoding="utf-8")
 sys.stdin.reconfigure(encoding="utf-8")
 
 
-# подключение к локальной LM Studio
+# подключение к локальной LM Studio (через OpenAI-совместимый API)
 llm = ChatOpenAI(
-    model="qwen/qwen3-vl-4b",
-    base_url="http://localhost:1234/v1",
-    api_key=SecretStr("fake"),
+    model=os.getenv("LLM_MODEL", "google/gemma-4-26b-a4b"),
+    base_url=os.getenv("LLM_BASE_URL", "http://192.168.0.120:1234/v1"),
+    api_key=SecretStr(os.getenv("LLM_API_KEY", "lm-studio")),
     temperature=0.9,  # высокая температура — больше выдумки
 )
 
