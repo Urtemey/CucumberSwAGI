@@ -1,11 +1,6 @@
-"""
-Задание 5. Кастомное прерывание в графе LangGraph (Human-in-the-Loop).
-
-Граф из одного узла, который вызывает interrupt() со структурированным
-объектом (тип, вопрос, варианты ответа). Цикл запуска ловит прерывание,
-показывает вопрос через questionary.select и возобновляет граф через
-Command(resume=...).
-"""
+# Задание 5 — кастомное прерывание через interrupt() в LangGraph.
+# Делаю граф из одного узла, который "спрашивает" пользователя и
+# возобновляется после Command(resume=...).
 
 import sys
 from typing import TypedDict
@@ -16,85 +11,74 @@ from langgraph.constants import START
 from langgraph.graph import StateGraph
 from langgraph.types import Command, interrupt
 
-
-def select(question: str, choices: list[str]) -> str:
-    """questionary.select при наличии TTY, иначе обычный input()."""
-    if sys.stdin.isatty():
-        return questionary.select(question, choices=choices).ask()
-    print(question)
-    for i, choice in enumerate(choices, 1):
-        print(f"  {i}) {choice}")
-    raw = input("Ваш выбор: ").strip()
-    if raw.isdigit() and 1 <= int(raw) <= len(choices):
-        return choices[int(raw) - 1]
-    return raw
-
+# винда любит cp1251, поэтому форсим utf-8
 sys.stdout.reconfigure(encoding="utf-8")
-sys.stderr.reconfigure(encoding="utf-8")
 sys.stdin.reconfigure(encoding="utf-8")
 
 
-# 1. Состояние графа
 class State(TypedDict, total=False):
-    foo: str
-    human_value: str
+    foo: str           # просто что-то начальное, чтобы было видно изменение
+    human_value: str   # сюда положим ответ юзера
 
 
-# 2. Узел с прерыванием
-def confirm_node(state: State) -> State:
+def node(state):
+    # передаю в interrupt структурированный объект — потом он же
+    # прилетит обратно (после resume), но уже с полем answer
     payload = interrupt({
         "type": "alert",
-        "question": "Уверены, что хотите продолжить?",
+        "question": "Уверены что хотите продолжить?",
         "allow_responds": ["approve", "reject"],
     })
 
-    # После resume payload — это словарь с добавленным полем 'answer'.
+    print(f"!!! {payload['type']} !!!")
+    print(f"> Received an input from the interrupt: {payload['answer']}")
     return {"human_value": payload["answer"]}
 
 
-# 3. Сборка графа
-builder = StateGraph(State)
-builder.add_node("node", confirm_node)
-builder.add_edge(START, "node")
+# граф из одного узла
+g = StateGraph(State)
+g.add_node("node", node)
+g.add_edge(START, "node")
+graph = g.compile(checkpointer=InMemorySaver())
 
-graph = builder.compile(checkpointer=InMemorySaver())
+
+def show_menu(question, options):
+    # questionary удобный, но в неинтерактивной консоли падает — делаю фоллбэк
+    if sys.stdin.isatty():
+        return questionary.select(question, choices=options).ask()
+    print(question)
+    for i, opt in enumerate(options, 1):
+        print(f"  {i}) {opt}")
+    raw = input("> ").strip()
+    if raw.isdigit() and 1 <= int(raw) <= len(options):
+        return options[int(raw) - 1]
+    return raw
 
 
-def main() -> None:
+def run():
     config = {"configurable": {"thread_id": "session-1"}}
-    initial_state: State = {"foo": "начальное значение"}
+    initial = {"foo": "начальное значение"}
 
-    # Первый запуск — до прерывания
-    final_chunk = None
-    for chunk in graph.stream(initial_state, config=config):
+    # первый прогон — до прерывания
+    for chunk in graph.stream(initial, config=config):
         if "__interrupt__" in chunk:
-            interrupt_obj = chunk["__interrupt__"][0]
-            payload = interrupt_obj.value
+            payload = chunk["__interrupt__"][0].value
 
             print("Произошла остановка")
             print(payload)
-            print(f"!!! {payload['type']} !!!")
 
-            answer = select(payload["question"], payload["allow_responds"])
+            answer = show_menu(payload["question"], payload["allow_responds"])
 
-            print(f"> Received an input from the interrupt: {answer}")
-
-            # Дополняем payload ответом и возобновляем граф
+            # докидываю поле в тот же объект и возобновляю граф
             payload["answer"] = answer
-            for resumed in graph.stream(
-                Command(resume=payload),
-                config=config,
-            ):
-                final_chunk = resumed
+            for resumed in graph.stream(Command(resume=payload), config=config):
                 print(resumed)
         else:
-            final_chunk = chunk
             print(chunk)
 
-    # Финальное состояние
-    final_state = graph.get_state(config).values
-    print("\nИтоговое состояние:", final_state)
+    final = graph.get_state(config).values
+    print("\nИтоговое состояние:", final)
 
 
 if __name__ == "__main__":
-    main()
+    run()
