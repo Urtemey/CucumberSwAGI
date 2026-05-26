@@ -111,8 +111,8 @@ def chat_loop() -> None:
         except Exception as exc:
             # частая причина — не поднят LM Studio Local Server или нет нужной модели
             print(f"[ошибка] {exc}")
-            print("Проверь .env (LLM_BASE_URL, EMBED_BASE_URL) и что в LM Studio "
-                  "загружены chat- и embedding-модели.\n")
+            print("Проверь .env (LLM_BASE_URL для LM Studio, OLLAMA_BASE_URL для Ollama) "
+                  "и что подняты chat- и embedding-модели.\n")
 
 
 def main() -> None:

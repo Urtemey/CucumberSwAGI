@@ -8,10 +8,9 @@ from typing import Iterable
 
 from dotenv import load_dotenv
 from langchain_core.documents import Document
-from langchain_openai import OpenAIEmbeddings
+from langchain_ollama import OllamaEmbeddings
 from langchain_qdrant import QdrantVectorStore
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from pydantic import SecretStr
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
 
@@ -30,9 +29,10 @@ def _resolve_path(raw: str | None, default: Path) -> str:
 
 
 COLLECTION_NAME = os.getenv("RAG_COLLECTION", "knowledge_base")
-EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-nomic-embed-text-v1.5")
-EMBED_BASE_URL = os.getenv("EMBED_BASE_URL", "http://192.168.0.120:1234/v1")
-EMBED_API_KEY = os.getenv("EMBED_API_KEY", "lm-studio")
+# Ollama для эмбеддингов: модель и базовый URL берём из .env,
+# по умолчанию — nomic-embed-text на локальной Ollama.
+EMBED_MODEL = os.getenv("OLLAMA_EMBED_MODEL", os.getenv("EMBED_MODEL", "nomic-embed-text"))
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 EMBED_DIM = int(os.getenv("EMBED_DIM", "768"))
 QDRANT_PATH = _resolve_path(
     os.getenv("RAG_QDRANT_PATH"),
@@ -40,12 +40,10 @@ QDRANT_PATH = _resolve_path(
 )
 
 
-def make_embeddings() -> OpenAIEmbeddings:
-    return OpenAIEmbeddings(
+def make_embeddings() -> OllamaEmbeddings:
+    return OllamaEmbeddings(
         model=EMBED_MODEL,
-        base_url=EMBED_BASE_URL,
-        api_key=SecretStr(EMBED_API_KEY),
-        check_embedding_ctx_length=False,  # LM Studio не сообщает context length
+        base_url=OLLAMA_BASE_URL,
     )
 
 
